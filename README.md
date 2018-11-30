@@ -44,12 +44,13 @@ head(ITSTest)
 Steps I need to take
 1. Get a year variable
 2. Get a month variable
+3. Add a time variable
+4. Get descriptives: Counts per month, counts per year, plot over time
+5. Add intervention variable
+Baseline until January 2014, "Medication Only" protocol September 2015 
 
+6. Evaluate the regular model for autocorrelation
 ```{r}
-setwd("C:/Users/Matthew.Hanauer/Desktop")
-ITSTest = read.csv("ZSData.csv", header = TRUE)
-ITSTest$Month
-
 ### use the gsub function to break off -02 part, then get rid of -, then you have the year
 ITSTest$MonthNum =  gsub("\\d", "", ITSTest$Month)
 ### Get rid of -0x part 
@@ -59,51 +60,62 @@ ITSTest$Year = gsub("\\D", "", ITSTest$Month)
 
 ITSTest$Year = as.numeric(ITSTest$Year)
 
-ITSTest[,1]
+ITSTest$Month = NULL
+head(ITSTest)
+
+### Add a time variable that is 1:length of data set see Bernal article
+ITSTest$Time= 1:dim(ITSTest)[1]
+dim(ITSTest)
+head(ITSTest)
+ITSTest
+ITSTest[144,]
+
+Intervention= c(rep(0,144), rep(1,194-144))
+length(Intervention)
+
+ITSTest$Intervention = Intervention
+head(ITSTest)
+ITSTest[144:145,]
+
+
 ```
-Figure out how to create a ts object with the current data
+Just look at descirptives
 ```{r}
-
-ITSTest = ts(ITSTest)
+describe(ITSTest)
 ```
 
 
-Ok now let's start with the autocorrelation tests
-You need to check the residuals for autocorrelation 
-So put together a model first 
+Get counts by month and year 
+We are missing some months?  Why?
 
-Helpful introduction to ARIMA modeling: https://www.datascience.com/blog/introduction-to-forecasting-with-arima-in-r-learn-data-science-tutorials
-
-Need to test for autocorrelation via plots of residuals and ACF plots
-ACF plots show how much relationship there between time points 
-
-The bands on the plots show 95% confidence intervals for whether there is significant autocorrelation or not
-
-
+I want the total number of people who died by suicide for each month 
 ```{r}
-modelAuto = glm(aces ~ time*smokban, family = "poisson", data = ITSTest)  
-residModelAuto = residuals(modelAuto)
-plot(residModelAuto, ITSTest$time)
+sucByYear = aggregate(Suicides ~ Suicides + Year, data = ITSTest, sum)
+sucByMonth = aggregate(Suicides ~ Suicides + MonthNum, data = ITSTest, sum)
+sucByMonth = data.frame(sucByMonth)
+plot(sucByMonth$Suicides, sucByMonth$MonthNum)
+plot(sucByYear$Year, sucByYear$Suicides)
 
-acf(residModelAuto)
-pacf(residModelAuto)
 ```
-Now try getting rid of seasonality
-Change into time series object
-Then get rid of seasonality
-Good website for seasonality: https://anomaly.io/seasonal-trend-decomposition-in-r/
+Testing autocorrelation and overdispersion
+```{r}
+modelP = glm(Suicides ~ Time*Intervention, family = "poisson", data = ITSTest)  
+modelQP = glm(Suicides ~ Time*Intervention, family = "quasipoisson", data = ITSTest)  
+summary(modelQP)
 
-Is the seasonality multiplicatie or addative, so basically is the seasonality constant over time or does it grow or shrink over time
 
-Before you can use decompose you need to know the frequency of the seasonality
+residModel1 = residuals(model1)
+plot(residModel1, ITSTest$time)
 
-To find the seasonality, you need to find the freq with the highest spec value. Think about the clock, this is the value when we look at time when highest points for the different frequencies
+mean(ITSTest$Suicides)
+sd(ITSTest$Suicides)
 
-What to do if you do not know what the seasonabilty is: https://anomaly.io/detect-seasonality-using-fourier-transform-r/
+acf(residModel1)
+pacf(residModel1)
 
-To get rid of seasonal effect you extract the seasonal effect then
 
-Here is how you adjust for seasonality
+summary(model1)
+```
 ```{r}
 decompose_ITSTest_ts = decompose(ITSTest_ts, "additive")
 
