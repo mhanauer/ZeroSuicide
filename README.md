@@ -29,9 +29,14 @@ library(plyr)
 library(paran)
 library(caret)
 library(ggplot2)
-library(smooth)
-library(TSA)
 library(pracma)
+library(AER)
+library(pscl)
+library(TSA)
+library(TTR)
+library(smooth)
+library(greybox)
+library(tseries)
 ```
 Load the data
 Outcome = aces
@@ -44,12 +49,14 @@ head(ITSTest)
 Steps I need to take
 1. Get a year variable
 2. Get a month variable
-
+3. Add a time variable
+4. Get descriptives: Counts per month, counts per year, plot over time
+5. Add intervention variable Intervention starts January 2014
+6. Figure out how to evaluate seasonal effect
+7. Figure out how to get rid of if necessary seasonal effect
+8. Evaluate the regular model for autocorrelation
+9. Figure out if necessary how to get rid of auto
 ```{r}
-setwd("C:/Users/Matthew.Hanauer/Desktop")
-ITSTest = read.csv("ZSData.csv", header = TRUE)
-ITSTest$Month
-
 ### use the gsub function to break off -02 part, then get rid of -, then you have the year
 ITSTest$MonthNum =  gsub("\\d", "", ITSTest$Month)
 ### Get rid of -0x part 
@@ -59,51 +66,121 @@ ITSTest$Year = gsub("\\D", "", ITSTest$Month)
 
 ITSTest$Year = as.numeric(ITSTest$Year)
 
-ITSTest[,1]
+ITSTest$Month = NULL
+head(ITSTest)
+
+### Add a time variable that is 1:length of data set see Bernal article
+ITSTest$Time= 1:dim(ITSTest)[1]
+dim(ITSTest)
+head(ITSTest)
+ITSTest
+ITSTest[144,]
+
+Intervention= c(rep(0,144), rep(1,194-144))
+length(Intervention)
+
+ITSTest$Intervention = Intervention
+head(ITSTest)
+ITSTest[144:145,]
+
+
 ```
-Figure out how to create a ts object with the current data
+Just look at descirptives
+We are missing some values for certain months not sure why
+```{r}
+describe(ITSTest)
+```
+
+
+Get counts by month and year 
+We are missing some months?  Why?
+
+Getting the total number of suicide deaths by month, then year
+```{r}
+sucByYear = aggregate(Suicides ~ Suicides + Year, data = ITSTest, sum)
+sucByMonth = aggregate(Suicides ~ Suicides + MonthNum, data = ITSTest, sum)
+
+sucByYear
+sucByMonth
+
+plot(sucByYear$Year, sucByYear$Suicides)
+
+```
+Testing overdispersion and autocorrelation
+
+Dispersion not significantly different from one by test and visual inspection of value 
+
+
+Autocorrelation good link: https://www.ibm.com/support/knowledgecenter/en/SS3RA7_15.0.0/com.ibm.spss.modeler.help/timeseries_acf_pacf.htm
+
+Shows the correlation on the y-axis between different time orders.  For example, time one 
+```{r}
+modelP = glm(Suicides ~ Time*Intervention, family = "poisson", data = ITSTest)  
+modelQP = glm(Suicides ~ Time*Intervention, family = "quasipoisson", data = ITSTest)  
+dispersiontest(modelP, alternative = "two.sided")
+mean(ITSTest$Suicides)
+sd(ITSTest$Suicides)
+
+summary(modelP)
+
+### Testing autocorrelation
+
+residModelP = residuals(modelP)
+plot(residModelP, ITSTest$time)
+acf(residModelP)
+pacf(residModelP)
+```
+Let's try to graph suicides over time with some indication of intervention
 ```{r}
 
-ITSTest = ts(ITSTest)
+interaction.plot(x.factor = ITSTest$Time, trace.factor = ITSTest$Intervention, response = ITSTest$Suicides)
 ```
-
-
-Ok now let's start with the autocorrelation tests
-You need to check the residuals for autocorrelation 
-So put together a model first 
-
-Helpful introduction to ARIMA modeling: https://www.datascience.com/blog/introduction-to-forecasting-with-arima-in-r-learn-data-science-tutorials
-
-Need to test for autocorrelation via plots of residuals and ACF plots
-ACF plots show how much relationship there between time points 
-
-The bands on the plots show 95% confidence intervals for whether there is significant autocorrelation or not
-
-
+Try getting the outcome smoothed
 ```{r}
-modelAuto = glm(aces ~ time*smokban, family = "poisson", data = ITSTest)  
-residModelAuto = residuals(modelAuto)
-plot(residModelAuto, ITSTest$time)
-
-acf(residModelAuto)
-pacf(residModelAuto)
+test = SMA(ITSTest$Suicides, n = 12)
+hist(test)
 ```
-Now try getting rid of seasonality
-Change into time series object
-Then get rid of seasonality
-Good website for seasonality: https://anomaly.io/seasonal-trend-decomposition-in-r/
+Try turning into a TS object
 
-Is the seasonality multiplicatie or addative, so basically is the seasonality constant over time or does it grow or shrink over time
+Ok delete 2002, because you do not have January and it is throwing everything off
+```{r}
+ITSTest
+write.csv(ITSTest, "ITSTest.csv", row.names = FALSE)
+ITSTS = ts(ITSTest, frequency = 12)
+ITSTS
+```
 
-Before you can use decompose you need to know the frequency of the seasonality
 
-To find the seasonality, you need to find the freq with the highest spec value. Think about the clock, this is the value when we look at time when highest points for the different frequencies
+Try the hurdle model and test for auto
+```{r}
 
-What to do if you do not know what the seasonabilty is: https://anomaly.io/detect-seasonality-using-fourier-transform-r/
+modelH= hurdle(Suicides ~ Time*Intervention, dist = "poisson", zero.dist = "binomial", data = ITSTest)  
 
-To get rid of seasonal effect you extract the seasonal effect then
+# Needs to be a ts function and doesn't work like the example says
+modelHH = hurdle(Suicides ~ Time*Intervention, dist = "poisson", zero.dist = "binomial", data = ITSTest)  
 
-Here is how you adjust for seasonality
+## Not trying cubic spline, not sure what is happening
+# When I model time as cubed as not raw then ok 
+modelHC = hurdle(Suicides ~ poly(Time, 3, raw = FALSE)*Intervention, dist = "poisson", zero.dist = "binomial", data = ITSTest)  
+
+
+
+summary(modelHC)
+
+#Checking autocorrelation
+residModelH = residuals(modelH)
+plot(ITSTest$Time, residModelH)
+acf(residModelH)
+pacf(residModelH)
+
+
+data(tempdub)
+tempdub = data.frame(tempdub)
+tempdub = harmonic(tempdub, 1)
+
+```
+
+
 ```{r}
 decompose_ITSTest_ts = decompose(ITSTest_ts, "additive")
 
