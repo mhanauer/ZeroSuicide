@@ -229,6 +229,10 @@ summary(trend_station)
 
 ```
 Model 2: Moving average model
+
+Running the model and checking for autocorrelation
+
+Seems like differing is needed there is autocorrelation
 ```{r}
 model_lm = lm(ITS_ma$Suicides_ma ~ Time*Intervention, data = ITS_ma)  
 summary(model_lm)
@@ -246,41 +250,55 @@ pacf(residmodel_lm)
 #summary(model_poly)
 
 ```
-
-
-Extra information
-
-Try getting the outcome smoothed
+Model 3: Moving average plus differencing (use data set generated before)
 ```{r}
+describe(ITS_ma)
+interaction.plot(x.factor = ITS_ma$Time, trace.factor = ITS_ma$Intervention, response = ITS_ma$Suicides_ma_diff)
+hist(Suicides_ma_diff)
+qqnorm(Suicides_ma_diff)
+compmeans(ITS_ma$Suicides_ma_diff, ITS_ma$Intervention) 
 
-test = log(test)
-hist(test)
 ```
-
+Model 3: Moving average and differencing
+Checking if data is stationary
 ```{r}
-decompose_ITSTest_ts = decompose(ITSTest_ts, "additive")
+mean_station =  ur.kpss(ITS_ma$Suicides_ma_diff, type="mu", lags="short")
+summary(mean_station)
 
-plot(decompose_ITSTest_ts$trend)
+trend_station =  ur.kpss(ITS_ma$Suicides_ma_diff, type="tau", lags="short")
+summary(trend_station)
 
-adjustITSTest_ts = ITSTest_ts - decompose_ITSTest_ts$seasonal 
-plot(adjustITSTest_ts)
 
-ITSTest_ts[,3]
 ```
-Here I am demonstrating how to identify what the frequency should be is you are unsure (I guess I should know, because it will likely be each month)???
-Try turning into a TS object
-No way to account for inflated zeros with tscount model.
-
-Maybe take the moving average then model
+Model 3: Moving average and differencing
+Running linear and robust models
 ```{r}
+model_lm = lm(ITS_ma$Suicides_ma_diff ~ Time*Intervention, data = ITS_ma)  
+summary(model_lm)
 
-ITSTest$MonthNum = NULL
-ITS_ts = ts(ITSTest, start = 3, frequency = 12)
-ITS_ts
-window(ITS_ts, start = c(4, 12), end = c(6, 5))
 
-plot.ts(ITS_ts[,1])
+#Checking autocorrelation
+residmodel_lm= residuals(model_lm)
+plot(ITS_ma$Time, residmodel_lm)
+acf(residmodel_lm)
+pacf(residmodel_lm)
 ```
+Model 4: Poisson and hurdle with counts
+Testing assumptions
+```{r}
+mean_station =  ur.kpss(ITSTest$Suicides, type="mu", lags="short")
+summary(mean_station)
+
+trend_station =  ur.kpss(ITSTest$Suicides, type="tau", lags="short")
+summary(trend_station)
+
+interaction.plot(x.factor = ITSTest$Time, trace.factor = ITSTest$Intervention, response = ITSTest$Suicides)
+
+compmeans(ITSTest$Suicides, ITSTest$Intervention) 
+```
+Model 4: Poisson and hurdle with counts
+Running models
+
 Testing for seasonality
 
 Testing overdispersion and autocorrelation
@@ -310,11 +328,10 @@ pacf(residModelP)
 
 Try the hurdle model and test for auto
 ```{r}
-
 modelH= hurdle(Suicides ~ Time*Intervention, dist = "poisson", zero.dist = "binomial", data = ITSTest)  
 summary(modelH)
 # Needs to be a ts function and doesn't work like the example says
-modelHH = hurdle(Suicides ~ Time*Intervention, dist = "poisson", zero.dist = "binomial", data = ITSTest)  
+modelH = hurdle(Suicides ~ Time*Intervention, dist = "poisson", zero.dist = "binomial", data = ITSTest)  
 
 ## Not trying cubic spline, not sure what is happening
 # When I model time as cubed as not raw then ok 
@@ -327,3 +344,7 @@ plot(ITSTest$Time, residModelH)
 acf(residModelH)
 pacf(residModelH)
 ```
+Model 5: CRI's moving average data
+
+
+
