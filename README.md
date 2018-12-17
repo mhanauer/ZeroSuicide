@@ -18,7 +18,6 @@ Good time series: https://datascienceplus.com/time-series-analysis-in-r-part-1-t
 Good information on time series in R: https://datascienceplus.com/time-series-analysis-in-r-part-2-time-series-transformations/
 ```{r}
 library(lavaan)
-library(lavaan)
 library(psych)
 library(semTools)
 library(dplyr)
@@ -43,16 +42,10 @@ library(pscl)
 library(TSA)
 library(TTR)
 library(smooth)
-library(greybox)
-library(tseries)
 library(descr)
-library(urca)
-library(forecast)
 ```
 Load the data
 ```{r}
-setwd("C:/Users/Matthew.Hanauer/Desktop")
-ITSTest = read.csv("ZSData.csv", header = TRUE) 
 head(ITSTest)
 ```
 Cleaning data
@@ -109,7 +102,6 @@ Getting the total number of suicide deaths by month, then year
 ```{r}
 sucByYear = aggregate(Suicides ~ Suicides + Year, data = ITSTest, sum)
 sucByMonth = aggregate(Suicides ~ Suicides + MonthNum, data = ITSTest, sum)
-
 
 sucByYear
 
@@ -445,5 +437,13 @@ Do t-tests and demonstrate how to do this
 (x1=x2)/sqrt(s1^2/n1 + s2^2/n2)
 ```{r}
 
+```
+Try GLS model
+```{r}
+head(ITSRolling)
+library(nlme)
+ITSRollingGLS = data.frame(RollingSumTN = ITSRolling$RollingSumTN, Intervention = ITSRolling$Intervention)
+gls_rollingTN = gls(RollingSumTN ~ Intervention, correlation  = corAR1(), data = ITSRolling)
+summary(gls_rollingTN)
 ```
 
