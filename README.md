@@ -60,7 +60,7 @@ ITSTest$MonthNum = substr(ITSTest$MonthNum, start = 1, stop= 3)
 ITSTest$Year = gsub("\\D", "", ITSTest$Month)
 
 ITSTest$Year = as.numeric(ITSTest$Year)
-
+ITSTest
 ITSTest$Month = NULL
 head(ITSTest)
 
@@ -71,18 +71,13 @@ head(ITSTest)
 ITSTest
 ITSTest[144:150,]
 
-#July 2014 intervention starts
-Intervention= c(rep(0,149), rep(1,194-149))
+#Start Jan 2014 intervention starts
+Intervention= c(rep(0,143), rep(1,194-143))
 length(Intervention)
 
 ITSTest$Intervention = Intervention
 head(ITSTest)
-ITSTest[149:150,]
-
-## Get rid of year two, because we are not starting out in January and the ts object is thinking that we are starting in January 
-#ITSTest = subset(ITSTest, Year != 2)
-describe.factor(ITSTest$Year)
-ITSTest[140:150,]
+ITSTest[143:145,]
 
 
 ### Changing the month names to numbers so we can plot
@@ -198,6 +193,12 @@ summary(model_diff_log_lm_nointer)
 model_diff_log_lm_inter = lm(Suicides_diff_log ~ Time*Intervention, data = ITS_diff_log)
 summary(model_diff_log_lm_inter)
 
+#Checking autocorrelation
+residModelH = residuals(model_diff_log_lm_nointer)
+plot(ITS_diff_log$Time, residModelH)
+acf(residModelH)
+pacf(residModelH)
+
 ```
 Model 2: Moving average model with difference scores
 Cleaning data
@@ -243,9 +244,13 @@ Running the model and checking for autocorrelation
 
 Seems like differing is needed there is autocorrelation
 ```{r}
-model_lm = lm(ITS_ma$Suicides_ma ~ Time*Intervention, data = ITS_ma)  
+model_lm = lm(ITS_ma$Suicides_ma ~Time*Intervention, data = ITS_ma)  
 summary(model_lm)
+library(jtools)
 
+
+interact_plot(model_lm, pred = "Time", modx = "Intervention", data = ITS_ma)
+interaction.plot(x.factor = ITS_diff_log$Time, trace.factor = ITS_diff_log$Intervention, response = ITS_diff_log$Suicides_diff_log)
 
 #Checking autocorrelation
 residmodel_lm= residuals(model_lm)
