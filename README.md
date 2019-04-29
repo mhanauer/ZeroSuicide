@@ -41,7 +41,7 @@ Also created a quarter variable to account for the seasonality
 ### use the gsub function to break off -02 part, then get rid of -, then you have the year
 ITSTest$MonthNum =  gsub("\\d", "", ITSTest$Month)
 ### Get rid of -0x part 
-ITSTest$MonthNum = substr(ITSTest$MonthNum, start = 1, stop= 3)
+ITSTest$MonthNum = substr(ITSTest$MonthNum, start = 2, stop= 4)
 
 ITSTest$Year = gsub("\\D", "", ITSTest$Month)
 
