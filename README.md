@@ -38,16 +38,15 @@ Then I am renaming the months so they are numbers.
 
 Also created a quarter variable to account for the seasonality
 ```{r}
+ITSTest$Year = gsub("\\D", "", ITSTest$Month)
+ITSTest$Year = as.numeric(ITSTest$Year)
+
+head(ITSTest)
 ### use the gsub function to break off -02 part, then get rid of -, then you have the year
 ITSTest$MonthNum =  gsub("\\d", "", ITSTest$Month)
 ### Get rid of -0x part 
-ITSTest$MonthNum = substr(ITSTest$MonthNum, start = 2, stop= 4)
-
-ITSTest$Year = gsub("\\D", "", ITSTest$Month)
-
-ITSTest$Year = as.numeric(ITSTest$Year)
+ITSTest$MonthNum = substr(ITSTest$MonthNum, start = 1, stop= 3)
 ITSTest$Month = NULL
-head(ITSTest)
 
 ### Add a time variable that is 1:length of data set see Bernal article
 ITSTest$Time= 1:dim(ITSTest)[1]
@@ -108,7 +107,8 @@ lrtest(modelH_int_p,modelH_int_n)
 
 modelH_int_covar_p = hurdle(Suicides ~ Intervention + factor(Quarter), dist = "poisson", zero.dist = "binomial", data = ITSTest)  
 summary(modelH_int_covar_p)
-
+exp(0.5827)
+exp(-0.06691)
 modelH_int_covar_n = hurdle(Suicides ~ Intervention + factor(Quarter), dist = "negbin", zero.dist = "binomial", data = ITSTest)  
 summary(modelH_int_covar_n)
 
