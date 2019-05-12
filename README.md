@@ -19,11 +19,12 @@ library(urca)
 library(pscl)
 library(tsModel) ; library(Epi)
 library(splines) ; library(vcd)
+library(psych)
 ```
 Loading the data.  I created two data sets.  First is just the raw data.  It starts in Februray 2002 (no data for January) and ends in March 2018.  The data is by the count of suicides per month. 
 ```{r}
 #Zero Suicide Data
-setwd("S:/Indiana Research & Evaluation/Matthew Hanauer/ZeroSuicide")
+#setwd("S:/Indiana Research & Evaluation/Matthew Hanauer/ZeroSuicide")
 ITSTest = read.csv("ZSData.csv", header = TRUE, na.strings = "N/A")
 head(ITSTest)
 ```
@@ -44,7 +45,7 @@ head(ITSTest)
 ### use the gsub function to break off -02 part, then get rid of -, then you have the year
 ITSTest$MonthNum =  gsub("\\d", "", ITSTest$Month)
 ### Get rid of -0x part 
-ITSTest$MonthNum = substr(ITSTest$MonthNum, start = 1, stop= 3)
+ITSTest$MonthNum = substr(ITSTest$MonthNum, start = 2, stop= 4)
 ITSTest$Month = NULL
 
 ### Add a time variable that is 1:length of data set see Bernal article
@@ -94,6 +95,27 @@ Need to include a quarter variable for seasonality: https://books.google.com/boo
 
 I also tested whether a regular Poisson (better model fit) was better or worse than the final hurdle count model.
 ```{r}
+model_p = glm(Suicides ~ Intervention, family = "poisson", data = ITSTest)
+summary(model_p)
+
+library(MASS)
+
+model_nb = glm.nb(Suicides ~ Intervention, data = ITSTest)
+summary(model_nb)
+AIC(model_p)
+AIC(model_nb)
+BIC(model_p)
+BIC(model_nb)
+
+anova(model_p, model_nb)
+pchisq(2 * (logLik(model_p) - logLik(model_nb)), df = 1, lower.tail = FALSE)
+
+model_p_quart = glm(Suicides ~ Intervention + factor(Quarter), family = "poisson", data = ITSTest)
+sum_model_p_quart = summary(model_p_quart)
+exp(sum_model_p_quart$coefficients[,1])
+
+model_p = glm(Suicides ~ Intervention, family = "poisson", data = ITSTest)
+summary(model_p)
 
 modelH_int_p = hurdle(Suicides ~ Intervention, dist = "poisson", zero.dist = "binomial", data = ITSTest)  
 summary(modelH_int_p)
