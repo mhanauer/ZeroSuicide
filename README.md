@@ -70,6 +70,9 @@ Just look at descriptives
 ```{r}
 describe(ITSTest)
 describe.factor(ITSTest$Intervention)
+aggregate(Suicides ~ Intervention, data = ITSTest, sum)
+aggregate(Suicides ~ Intervention, data = ITSTest, range)
+
 ```
 Getting the
 
