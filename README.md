@@ -234,6 +234,14 @@ compmeans(ITSTest_Jan_Jan$Suicides, ITSTest_Jan_Jan$Intervention_Jan_Jan)
 percent_change =  round((0.6666667-1.0208333)/1.0208333, 2)
 percent_change
 ```
+Describe first year
+```{r}
+aggregate(Suicides ~ Intervention, data = ITSTest_Jan_Jan, sum)
+aggregate(Suicides ~ Intervention, data = ITSTest_Jan_Jan, range)
+
+```
+
+
 Now try statistical tests for just first year
 ```{r}
 model_p_jan_jan_quart = glm(Suicides ~ Intervention_Jan_Jan + factor(Quarter), family = "poisson", data = ITSTest_Jan_Jan)
