@@ -153,11 +153,16 @@ model_p_quart = glm(Suicides ~ Intervention + factor(Quarter), family = "poisson
 summary(model_p_quart)
 model_p_quart_inter = glm(Suicides ~ Intervention*factor(Quarter), family = "poisson", data = ITSTest)
 summary(model_p_quart_inter)
-#### Although not statistically significantly different quarter 3 is significant so keep that variable in the model
+####Try a month variable nothing significant
+model_p_m = glm(Suicides ~ Intervention + factor(MonthNum), family = "poisson", data = ITSTest)
+summary(model_p_m)
+#### 
 lrtest(model_p,model_p_quart)
 ######
 lrtest(model_p_quart, model_p_quart_inter)
 ######
+
+
 ```
 Final model results
 ```{r}
@@ -198,6 +203,7 @@ mean_station_long[[i]]  =  ur.kpss(ITSTest$Suicides, type="tau", use.lag
 mean_station_long[[i]] = summary(mean_station_long[[i]])
 }
 mean_station_long
+
 
 lag_n_short = c(2:10)
 trend_station_short = list()
@@ -288,6 +294,25 @@ AIC(model_p)
 BIC(model_p)
 AIC(model_p_harm)
 BIC(model_p_harm)
+```
+ARIMA Model
+Create a time ts object
+Run model
+Data starts in Feburary, but probably does not matter if we assume Februray is January just a label.
+```{r}
+ITS_ts = ts(ITSTest, start = c(2, 1), frequency = 12)
+head(ITS_ts)
+Intervention_ts = ITS_ts[,5]
+ITS_ts = ITS_ts[,1]
+library(forecast)
+library(lmtest)
+ITS_arima = Arima(ITS_ts, order = c(0,0,1), xreg = Intervention_ts)
+summary(ITS_arima)
+coeftest(ITS_arima)
+### There was evidence of a spike at 17
+ITS_arima_17 = Arima(ITS_ts, order = c(17,0,17), xreg = Intervention_ts)
+summary(ITS_arima_17)
+coeftest(ITS_arima_17)
 ```
 Maybe add Indiana Grant
 ```{r}
