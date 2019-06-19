@@ -238,9 +238,12 @@ Without offsets it is the ratio so the expcted percentage change of the expected
 
 With offsets it is the expected percentage change in the rate: https://stats.idre.ucla.edu/stata/dae/poisson-regression/ 
 
+We are getting the rate per year.  So we are getting the percentage change in the rate per year when we exp the results.
+
 Ok we have two numbers at the end.  Split the data in half and the early half gets 40 to 50 and the second get 50 to 60.  
 
 10,000 times in some loop
+
 
 Then get the number of times there is a significant decrease and then increase maybe
 
@@ -254,19 +257,25 @@ total_high = sample(total_samp_high, replace = TRUE, size = 194/2)
 total_n = c(total_low, total_high)
 total_n
 }
-total_n = replicate(10, total_n_fun())
-total_n_mat = matrix(data = total_n, nrow = 194, ncol = 10, byrow = FALSE)
+total_n = replicate(10000, total_n_fun())
+total_n_mat = matrix(data = total_n, nrow = 194, ncol = 10000, byrow = FALSE)
 dim(total_n_mat)
 total_n_mat[,1]
 ```
 Ok now create a for loop to run with the log of n in the results
 ```{r}
-model_p_results = list()
-for(i in 1:10){
-  model_p_results[i] == glm(Suicides ~ Intervention + offset(log(total_n_mat[i])), family = "poisson", data = ITSTest)
-}
-test = apply(total_n_mat, 2, function(x){glm(Suicides ~ Intervention + offset(log((x))), family = "poisson", data = ITSTest)})
-test
+model_p_results_n = apply(total_n_mat, 2, function(x){glm(Suicides ~ Intervention + offset(log((x))), family = "poisson", data = ITSTest)})
+model_p_results_test = summary(model_p_results_n[[1]])
+model_p_results_test$coefficients[2,4]
+
+summary_dat = lapply(model_p_results_n, summary)
+p_values = lapply(summary_dat, function(x)x$coefficients[2,4])
+head(p_values)
+p_values
+p_values_sig = ifelse(p_values < .05,1,0)
+describe.factor(p_values_sig)
+sum(p_values_sig)
+p_values_sig
 ```
 
 
