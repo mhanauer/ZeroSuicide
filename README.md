@@ -20,6 +20,7 @@ library(pscl)
 library(tsModel) ; library(Epi)
 library(splines) ; library(vcd)
 library(psych)
+library(prettyR)
 ```
 
 We need to get the date into a form that is analyzable.  I want two variables for date one with month and another with year.
@@ -137,9 +138,10 @@ Need to include a quarter variable for seasonality: https://books.google.com/boo
 I also tested whether a regular Poisson (better model fit) was better or worse than the final hurdle count model.
 ```{r}
 model_p = glm(Suicides ~ Intervention, family = "poisson", data = ITSTest)
-model_p = glm(Suicides ~ Intervention, family = "poisson", data = ITSTest)
 summary(model_p)
 coeftest(model_p, vcov = sandwich)
+con_robust =  coefci(model_p, vcov = sandwich)
+exp(con_robust[2,1:2])
 
 library(MASS)
 
@@ -231,8 +233,8 @@ Range is from 39k (round up to 40K) up to 60k
 
 How to use offsets: 
 https://stats.stackexchange.com/questions/11182/when-to-use-an-offset-in-a-poisson-regression
-https://stats.stackexchange.com/questions/175349/in-a-poisson-model-what-is-the-difference-between-using-time-as-a-covariate-or
-https://rpubs.com/Shaunson26/offsetglm
+http://www.stat.umn.edu/geyer/5931/mle/seed2.pdf
+See Bernal
 
 Without offsets it is the ratio so the expcted percentage change of the expected counts: https://stats.idre.ucla.edu/stata/output/poisson-regression/
 
@@ -265,13 +267,15 @@ total_n_mat[,1]
 Ok now create a for loop to run with the log of n in the results
 ```{r}
 model_p_results_n = apply(total_n_mat, 2, function(x){glm(Suicides ~ Intervention + offset(log((x))), family = "poisson", data = ITSTest)})
+model_p_results_n[1]
 model_p_results_test = summary(model_p_results_n[[1]])
+model_p_results_test$coefficients
 model_p_results_test$coefficients[2,4]
 
 summary_dat = lapply(model_p_results_n, summary)
 p_values = lapply(summary_dat, function(x)x$coefficients[2,4])
 head(p_values)
-p_values
+range(p_values)
 p_values_sig = ifelse(p_values < .05,1,0)
 describe.factor(p_values_sig)
 sum(p_values_sig)
