@@ -20,6 +20,7 @@ library(pscl)
 library(tsModel) ; library(Epi)
 library(splines) ; library(vcd)
 library(psych)
+library(prettyR)
 ```
 
 We need to get the date into a form that is analyzable.  I want two variables for date one with month and another with year.
@@ -33,6 +34,7 @@ Then I am renaming the months so they are numbers.
 Also created a quarter variable to account for the seasonality
 
 ```{r}
+ITSTest$Month
 ITSTest$Year = gsub("\\D", "", ITSTest$Month)
 ITSTest$Year = as.numeric(ITSTest$Year)
 
@@ -64,8 +66,6 @@ ITSTest$MonthNum = as.numeric(ITSTest$MonthNum)
 
 ITSTest$Quarter = ifelse(ITSTest$MonthNum <= 3, 1, ifelse(ITSTest$MonthNum >= 4 & ITSTest$MonthNum <= 6, 2, ifelse(ITSTest$MonthNum >= 7 & ITSTest$MonthNum <= 9, 3, ifelse(ITSTest$MonthNum >= 10, 4, ITSTest$MonthNum))))
 describe.factor(ITSTest$Quarter)
-
-
 ```
 Just look at descriptives 
 ```{r}
@@ -75,8 +75,6 @@ aggregate(Suicides ~ Intervention, data = ITSTest, sum)
 aggregate(Suicides ~ Intervention, data = ITSTest, range)
 
 ```
-Getting the
-
 Evaluating if the average number of suicides is different between intervention and baseline phase.
 
 Suicides went slightly up during intervention phase.
@@ -137,9 +135,10 @@ Need to include a quarter variable for seasonality: https://books.google.com/boo
 I also tested whether a regular Poisson (better model fit) was better or worse than the final hurdle count model.
 ```{r}
 model_p = glm(Suicides ~ Intervention, family = "poisson", data = ITSTest)
-model_p = glm(Suicides ~ Intervention, family = "poisson", data = ITSTest)
 summary(model_p)
 coeftest(model_p, vcov = sandwich)
+con_robust =  coefci(model_p, vcov = sandwich)
+exp(con_robust[2,1:2])
 
 library(MASS)
 
@@ -226,24 +225,59 @@ trend_station_long[[i]] = summary(trend_station_long[[i]])
 }
 trend_station_long
 ```
+Let's try with the 2009 data.  Just line it up with the previous data and won't need to merge the dates
+
+ITSTest$MonthNum =  gsub("\\d", "", ITSTest$Month)
+### Get rid of -0x part 
+ITSTest$MonthNum = substr(ITSTest$MonthNum, start = 1, stop= 3)
+
+Let's do the first points, then say if "-" the delete?
+
+Then get rid of the data until 2009, because we do not have counts for those
+Then 
+```{r}
+TotalCount$Month = substr(TotalCount$MonthYear, start = 1, stop = 2)
+head(TotalCount$Month)
+TotalCount$Month =  gsub("\\D", "", TotalCount$Month)
+TotalCount$Month = as.numeric(TotalCount$Month)
+
+TotalCount$Year = substr(TotalCount$MonthYear, start = 3, stop = 7)
+TotalCount$Year = gsub("\\D", "", TotalCount$Year)
+TotalCount$Year = as.numeric(TotalCount$Year)
+head(TotalCount)
+
+TotalCount = TotalCount[order(TotalCount$Year, TotalCount$Month),]
+head(TotalCount)
+mean(TotalCount$Year, na.rm = TRUE)
+TotalCount = TotalCount[-c(1:72),]
+head(TotalCount)
+ITSTest[170:200,]
+```
+
+
+
 Let's try the offset.  Maybe run some simulations with it to see if differences in rates would matter much.
 Range is from 39k (round up to 40K) up to 60k
 
 How to use offsets: 
 https://stats.stackexchange.com/questions/11182/when-to-use-an-offset-in-a-poisson-regression
-https://stats.stackexchange.com/questions/175349/in-a-poisson-model-what-is-the-difference-between-using-time-as-a-covariate-or
-https://rpubs.com/Shaunson26/offsetglm
+http://www.stat.umn.edu/geyer/5931/mle/seed2.pdf
+See Bernal
 
 Without offsets it is the ratio so the expcted percentage change of the expected counts: https://stats.idre.ucla.edu/stata/output/poisson-regression/
 
 With offsets it is the expected percentage change in the rate: https://stats.idre.ucla.edu/stata/dae/poisson-regression/ 
 
+We are getting the rate per year.  So we are getting the percentage change in the rate per year when we exp the results.
+
 Ok we have two numbers at the end.  Split the data in half and the early half gets 40 to 50 and the second get 50 to 60.  
 
 10,000 times in some loop
 
-Then get the number of times there is a significant decrease and then increase maybe
 
+Then get the number of times there is a significant decrease and then increase maybe
+Could use this formula to do a 15% increase for every 5 years: 5*(60000-40000)/40000 / (2018-2002)
+### Now get the data for 
 ```{r}
 dim(ITSTest)
 total_n_fun = function(){
@@ -254,19 +288,27 @@ total_high = sample(total_samp_high, replace = TRUE, size = 194/2)
 total_n = c(total_low, total_high)
 total_n
 }
-total_n = replicate(10, total_n_fun())
-total_n_mat = matrix(data = total_n, nrow = 194, ncol = 10, byrow = FALSE)
+total_n = replicate(10000, total_n_fun())
+total_n_mat = matrix(data = total_n, nrow = 194, ncol = 10000, byrow = FALSE)
 dim(total_n_mat)
 total_n_mat[,1]
 ```
 Ok now create a for loop to run with the log of n in the results
 ```{r}
-model_p_results = list()
-for(i in 1:10){
-  model_p_results[i] == glm(Suicides ~ Intervention + offset(log(total_n_mat[i])), family = "poisson", data = ITSTest)
-}
-test = apply(total_n_mat, 2, function(x){glm(Suicides ~ Intervention + offset(log((x))), family = "poisson", data = ITSTest)})
-test
+model_p_results_n = apply(total_n_mat, 2, function(x){glm(Suicides ~ Intervention + offset(log((x))), family = "poisson", data = ITSTest)})
+model_p_results_n[1]
+model_p_results_test = summary(model_p_results_n[[1]])
+model_p_results_test$coefficients
+model_p_results_test$coefficients[2,4]
+
+summary_dat = lapply(model_p_results_n, summary)
+p_values = lapply(summary_dat, function(x)x$coefficients[2,4])
+head(p_values)
+range(p_values)
+p_values_sig = ifelse(p_values < .05,1,0)
+describe.factor(p_values_sig)
+sum(p_values_sig)
+p_values_sig
 ```
 
 
