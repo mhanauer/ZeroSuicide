@@ -281,9 +281,9 @@ Could use this formula to do a 15% increase for every 5 years: 5*(60000-40000)/4
 ```{r}
 dim(ITSTest)
 total_n_fun = function(){
-total_samp_low = seq(from = 40000, to = 50000, by= 100) 
+total_samp_low = seq(from = round(40000/12,0), to = round(50000/12,0), by= 10) 
 total_low = sample(total_samp_low, replace = TRUE, size = 194/2)
-total_samp_high = seq(from = 50000, to = 60000, by= 100) 
+total_samp_high = seq(from = round(50000/12,0), to = round(60000/12,0), by= 10) 
 total_high = sample(total_samp_high, replace = TRUE, size = 194/2)
 total_n = c(total_low, total_high)
 total_n
@@ -308,7 +308,6 @@ range(p_values)
 p_values_sig = ifelse(p_values < .05,1,0)
 describe.factor(p_values_sig)
 sum(p_values_sig)
-p_values_sig
 ```
 
 
