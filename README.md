@@ -21,6 +21,7 @@ library(tsModel) ; library(Epi)
 library(splines) ; library(vcd)
 library(psych)
 library(prettyR)
+library(MASS)
 ```
 
 We need to get the date into a form that is analyzable.  I want two variables for date one with month and another with year.
@@ -28,6 +29,8 @@ We need to get the date into a form that is analyzable.  I want two variables fo
 Then I want to create a time variable which is just the number of time points in the study.
 
 Then I created an intervention variable, which is zero until the intervention start point which is Jan 2014.
+
+
 
 Then I am renaming the months so they are numbers.
 
@@ -49,15 +52,18 @@ ITSTest$Month = NULL
 ITSTest$Time= 1:dim(ITSTest)[1]
 dim(ITSTest)
 head(ITSTest)
+ITSTest[134:140,]
 ITSTest[144:150,]
-
 #Start Jan 2014 intervention starts
-Intervention= c(rep(0,143), rep(1,194-143))
+#Intervention= c(rep(0,143), rep(1,194-143))
+## Try April 2013
+Intervention= c(rep(0,134), rep(1,194-134))
 length(Intervention)
 
 ITSTest$Intervention = Intervention
 head(ITSTest)
 ITSTest[143:145,]
+ITSTest[134:140,]
 
 
 ### Changing the month names to numbers so we can plot
@@ -139,7 +145,6 @@ summary(model_p)
 coeftest(model_p, vcov = sandwich)
 con_robust =  coefci(model_p, vcov = sandwich)
 exp(con_robust[2,1:2])
-
 library(MASS)
 
 model_nb = glm.nb(Suicides ~ Intervention, data = ITSTest)
@@ -168,10 +173,9 @@ Final model results
 ```{r}
 model_p = glm(Suicides ~ Intervention, family = "poisson", data = ITSTest)
 summary(model_p)
-sum_model_p = summary(model_p)
-sum_model_p
-exp(confint(model_p))
-exp(sum_model_p$coefficients[,1])
+coeftest(model_p, vcov = sandwich)
+con_robust =  coefci(model_p, vcov = sandwich)
+exp(con_robust[2,1:2])
 ```
 Now checking the autocorrelation and seasonality of the best fitting model
 Some small amount of auto at 17ish, but not confirmed by other stationary tests at the .05 alpha level
